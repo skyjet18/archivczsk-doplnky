@@ -3,6 +3,7 @@
 import time
 
 from tools_archivczsk.contentprovider.extended import ModuleContentProvider, CPModuleLiveTV, CPModuleArchive, CPModuleTemplate, CPModuleSearch
+from tools_archivczsk.http_handler.hls import stream_key_to_hls_url
 from tools_archivczsk.string_utils import _I, _C, _B
 from tools_archivczsk.generator.lamedb import channel_name_normalise
 from .bouquet import SweetTVBouquetXmlEpgGenerator
@@ -40,35 +41,26 @@ class SweetTVModuleLiveTV(CPModuleLiveTV):
 					'adult': channel['adult']
 				}
 				epg_str = "  " + _I(epgdata["text"])
-				img = epgdata.get('preview_url')
 			else:
 				epg_str = ""
 				info_labels = {
 					'adult': channel['adult']
 				}
-				img = None
 
-			self.cp.add_video(channel['name'] + epg_str, img=img, info_labels=info_labels, download=enable_download, cmd=self.get_livetv_stream, channel_title=channel['name'], channel_id=channel['id'])
+			self.cp.add_video(channel['name'] + epg_str, img=channel.get('logo'), info_labels=info_labels, download=enable_download, cmd=self.get_livetv_stream, channel_title=channel['name'], channel_id=channel['id'])
 
 	# #################################################################################################
 
 	def get_livetv_stream(self, channel_title, channel_id):
 		enable_download = self.cp.get_setting('download_live')
 
-		for one in self.cp.sweettv.get_live_link(channel_id, max_bitrate=self.cp.get_setting('max_bitrate')):
-			info_labels = {
-				'quality': one.get('name', '???').replace('"', ''),
-				'bandwidth': one['bandwidth']
-			}
+		playlist, stream_id = self.cp.sweettv.get_live_link(channel_id)
 
-			data_item = {
-				'stream_id': one.get('stream_id')
-			}
+		data_item = {
+			'stream_id': stream_id
+		}
 
-			settings = {
-				'user-agent' : self.cp.sweettv.get_user_agent(),
-			}
-			self.cp.add_play(channel_title, one['url'], info_labels, data_item=data_item, settings=settings, download=enable_download)
+		self.cp.resolve_hls_streams(channel_title, playlist, download=self.cp.get_setting('download_live'), data_item=data_item)
 
 # #################################################################################################
 
@@ -155,11 +147,9 @@ class SweetTVModuleVOD(CPModuleTemplate):
 
 		if cat == 'collections':
 			data = data['collections'] + self.cp.sweettv.get_movie_collections()
-			prefix = '#movie_collection#'
 			cmd = self.get_movies_collection
 		elif cat == 'genres':
 			data = data['genres']
-			prefix = '#movie_genre#'
 			cmd = self.get_movies_genre
 		else:
 			data = []
@@ -238,7 +228,7 @@ class SweetTVModuleExtra(CPModuleTemplate):
 
 class SweetTVContentProvider(ModuleContentProvider):
 
-	def __init__(self, settings, http_endpoint, data_dir=None, bgservice=None):
+	def __init__(self, settings, http_endpoint, http_endpoint_rel, data_dir=None, bgservice=None):
 		ModuleContentProvider.__init__(self, name='SweetTV', settings=settings, data_dir=data_dir, bgservice=bgservice)
 
 		# list of settings used for login - used to auto call login when they change
@@ -251,6 +241,7 @@ class SweetTVContentProvider(ModuleContentProvider):
 		self.channels_by_norm_name = {}
 		self.checksum = None
 		self.http_endpoint = http_endpoint
+		self.http_endpoint_rel = http_endpoint_rel
 		self.last_stream_id = None
 
 		if not self.get_setting('device_id'):
@@ -344,20 +335,12 @@ class SweetTVContentProvider(ModuleContentProvider):
 	# #################################################################################################
 
 	def get_movie_stream(self, movie_name, movie_id, owner_id):
-		for one in self.sweettv.get_movie_link(movie_id, owner_id):
-			info_labels = {
-				'quality': one.get('name', '???').replace('"', ''),
-				'bandwidth': one['bandwidth']
-			}
+		url = self.sweettv.get_movie_link(movie_id, owner_id)
 
-			data_item = {
-				'stream_id': one.get('stream_id')
-			}
-
-			settings = {
-				'user-agent': self.sweettv.get_user_agent(),
-			}
-			self.add_play(movie_name, one['url'], info_labels, data_item=data_item, settings=settings)
+		settings = {
+			'user-agent': self.sweettv.get_user_agent(),
+		}
+		self.add_play(movie_name, url, settings=settings)
 
 	# #################################################################################################
 
@@ -368,20 +351,13 @@ class SweetTVContentProvider(ModuleContentProvider):
 	# #################################################################################################
 
 	def get_archive_stream(self, archive_title, channel_id, epg_id):
-		for one in self.sweettv.get_live_link(channel_id, epg_id, max_bitrate=self.get_setting('max_bitrate')):
-			info_labels = {
-				'quality': one.get('name', '???').replace('"', ''),
-				'bandwidth': one['bandwidth']
-			}
+		playlist, stream_id = self.sweettv.get_live_link(channel_id, epg_id)
 
-			data_item = {
-				'stream_id': one.get('stream_id')
-			}
+		data_item = {
+			'stream_id': stream_id
+		}
 
-			settings = {
-				'user-agent': self.sweettv.get_user_agent(),
-			}
-			self.add_play(archive_title, one['url'], info_labels, data_item=data_item, settings=settings)
+		self.resolve_hls_streams(archive_title, playlist, data_item=data_item)
 
 	# #################################################################################################
 
@@ -394,17 +370,54 @@ class SweetTVContentProvider(ModuleContentProvider):
 
 	# #################################################################################################
 
+	def get_hls_info(self, stream_key):
+		resp = {
+			'url': stream_key['url'],
+			'bandwidth': stream_key['bandwidth'],
+			'headers': self.sweettv.common_headers_stream
+		}
+
+		return resp
+
+	# #################################################################################################
+
+	def resolve_hls_streams(self, title, playlist_url, **kwargs):
+		self.log_debug("Playlist url: %s" % playlist_url)
+		for p in self.get_hls_streams(playlist_url, self.sweettv.api_session, headers=self.sweettv.common_headers_stream, max_bitrate=self.get_setting('max_bandwidth')):
+			bandwidth = int(p['bandwidth'])
+
+			info_labels = {
+				'quality': p.get('name', '???').replace('"', ''),
+				'bandwidth': bandwidth
+			}
+
+			if self.get_setting('hls_multiaudio'):
+				url = stream_key_to_hls_url(self.http_endpoint, {'url': p['playlist_url'], 'bandwidth': p['bandwidth']})
+			else:
+				url = p['url']
+
+			settings = {
+				'user-agent' : self.sweettv.get_user_agent(),
+			}
+
+			self.add_play(title, url, info_labels, settings=settings, **kwargs)
+
+	# #################################################################################################
+
 	def get_url_by_channel_key(self, channel_key):
 		if self.last_stream_id:
 			self.sweettv.close_stream(self.last_stream_id)
 
-		resp = self.sweettv.get_live_link(channel_key, max_bitrate=self.get_setting('max_bitrate'))
+		playlist, stream_id = self.sweettv.get_live_link(channel_key)
 
-		if len(resp) > 0:
-			self.last_stream_id = resp[0].get('stream_id')
-			return resp[0]['url']
-		else:
-			self.last_stream_id = None
-			return None
+		for p in self.get_hls_streams(playlist, self.sweettv.api_session, max_bitrate=self.get_setting('max_bandwidth')):
+			self.last_stream_id = stream_id
+			if self.get_setting('hls_multiaudio'):
+				return stream_key_to_hls_url(self.http_endpoint_rel, {'url': p['playlist_url'], 'bandwidth': p['bandwidth']})
+			else:
+				return p['url']
+
+		self.last_stream_id = None
+		return None
 
 	# #################################################################################################
