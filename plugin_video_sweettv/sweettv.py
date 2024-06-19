@@ -31,7 +31,7 @@ class SweetTV:
 			"Accept-encoding": "gzip",
 			'Accept-language': 'sk',
 			"Content-type": "application/json",
-			"x-device": "1;22;0;2;3.2.80"
+			"x-device": "1;22;0;2;6.2.67"
 		}
 
 		self.common_headers_stream = {
@@ -50,7 +50,7 @@ class SweetTV:
 			"model": SweetTV.get_user_agent(),
 			"firmware": {
 				"versionCode": 1,
-				"versionString": "3.2.80"
+				"versionString": "6.2.67"
 			},
 			"uuid": self.device_id,
 			"supported_drm": {
@@ -88,7 +88,7 @@ class SweetTV:
 	# #################################################################################################
 	@staticmethod
 	def get_user_agent():
-		return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 OPR/92.0.0.0'
+		return 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OPR/110.0.0.0'
 
 	# #################################################################################################
 
@@ -410,6 +410,7 @@ class SweetTV:
 				'adult': 1 in channel['category'] or "1" in channel['category'],
 				'number': channel['number'],
 				'picon': channel['icon_url'],
+				'logo': channel['icon_v2_url'],
 				'timeshift': channel['catchup_duration'] * 24 if channel.get('catchup') else 0
 			})
 
@@ -511,53 +512,6 @@ class SweetTV:
 
 	# #################################################################################################
 
-	def resolve_streams(self, url, stream_id=None, max_bitrate=None):
-		try:
-			req = self.api_session.get(url, headers=self.common_headers_stream)
-		except:
-			self.log_function("%s" % traceback.format_exc())
-			self.showError("Nastal problém pri načítení videa.")
-			return None
-
-		if req.status_code != 200:
-			self.showError(self._("Error by loading video") + ": http %d" % req.status_code)
-			return None
-
-		streams = []
-
-		if max_bitrate and int(max_bitrate) > 0:
-			max_bitrate = int(max_bitrate) * 1000000
-		else:
-			max_bitrate = 100000000
-
-		for m in re.finditer(r'^#EXT-X-STREAM-INF:(?P<info>.+)\n(?P<chunk>.+)', req.text, re.MULTILINE):
-			stream_info = {}
-			for info in re.split(r''',(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', m.group('info')):
-				key, val = info.split('=', 1)
-				stream_info[key.lower()] = val
-
-			stream_url = m.group('chunk')
-
-			if not stream_url.startswith('http'):
-				if stream_url.startswith('/'):
-					stream_url = url[:url[9:].find('/') + 9] + stream_url
-				else:
-					stream_url = url[:url.rfind('/') + 1] + stream_url
-
-			stream_info['url'] = stream_url
-			if stream_id:
-				stream_info['stream_id'] = stream_id
-
-			if int(stream_info['bandwidth']) <= max_bitrate:
-				streams.append(stream_info)
-
-		if len(streams) == 0 and stream_id:
-			self.close_stream(stream_id)
-
-		return sorted(streams,key=lambda i: int(i['bandwidth']), reverse = True)
-
-	# #################################################################################################
-
 	def close_stream(self, stream_id ):
 		req_data = {
 			'stream_id': int(stream_id)
@@ -568,11 +522,9 @@ class SweetTV:
 
 	# #################################################################################################
 
-	def get_live_link(self, channel_key, event_id=None, max_bitrate=None):
+	def get_live_link(self, channel_key, event_id=None):
 		req_data = {
-			'without_auth': True,
 			'channel_id': channel_key,
-			'accept_scheme': [ 'HTTP_HLS' ],
 			'multistream': True
 		}
 
@@ -586,8 +538,7 @@ class SweetTV:
 			return None
 
 		hs = data['http_stream']
-		url = 'http://%s:%d%s' % (hs['host']['address'], hs['host']['port'], hs['url'])
-		return self.resolve_streams(url, data.get('stream_id'), max_bitrate)
+		return ('http://%s:%d%s' % (hs['host']['address'], hs['host']['port'], hs['url']), data.get('stream_id'),)
 
 	# #################################################################################################
 
@@ -613,6 +564,6 @@ class SweetTV:
 			self.showError(self._("Unsupported stream type") + ": %s" % data.get('link_type', ''))
 			return None
 
-		return [ { 'url': data['url'], 'bandwidth': 1, 'name': '720p' } ]
+		return data['url']
 
 	# #################################################################################################

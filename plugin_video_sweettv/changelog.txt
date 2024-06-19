@@ -1,3 +1,7 @@
+1.15 - xx.xx.2024
+    - pridanie voľby pre zapnutie podpory pre viac audio stôp (nefunguje s exteplayer3)
+    - oprava zobrazenia obrázkov pri živých staniciach
+
 1.14 - 12.06.2024
     - pridaná skratka do archívu podľa názvu stanice
 
