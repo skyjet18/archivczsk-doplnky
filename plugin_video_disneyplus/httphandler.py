@@ -60,12 +60,17 @@ class DisneyHlsMaster(HlsPlaylist):
 
 class DisneyPlusHTTPRequestHandler(HlsHTTPRequestHandler):
 	def __init__(self, content_provider, addon ):
-		ext_drm_decrypt = PlayerFeatures.exteplayer3_cenc_supported and content_provider.get_setting('ext_drm_decrypt') and content_provider.get_setting('auto_used_player') == '2'
-		super(DisneyPlusHTTPRequestHandler, self).__init__(content_provider, addon, proxy_segments=not ext_drm_decrypt, proxy_variants=True, internal_decrypt=not ext_drm_decrypt)
+		super(DisneyPlusHTTPRequestHandler, self).__init__(content_provider, addon, proxy_segments=False, proxy_variants=True, internal_decrypt=False)
+		self.hls_fix_init = True
 
 	# #################################################################################################
 
 	def P_hls(self, request, path):
+		ext_drm_decrypt = PlayerFeatures.exteplayer3_cenc_supported and self.cp.get_setting('ext_drm_decrypt') and self.cp.get_setting('auto_used_player') == '2'
+		self.hls_proxy_segments = not ext_drm_decrypt
+		self.hls_internal_decrypt = not ext_drm_decrypt
+
+
 		'''
 		Handles request to hls master playlist. Address is created using stream_key_to_hls_url()
 		'''
