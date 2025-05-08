@@ -8,6 +8,7 @@ import binascii
 
 from ..compat import quote, unquote, urljoin
 from tools_cenc.mp4decrypt import mp4decrypt
+from tools_cenc.mp4edit import mp4remove_cenc
 
 # #################################################################################################
 
@@ -58,6 +59,7 @@ class HlsHTTPRequestHandler(HTTPRequestHandlerTemplate):
 		self.hls_proxy_segments = proxy_segments
 		self.hls_proxy_variants = proxy_variants
 		self.hls_internal_decrypt = proxy_segments and internal_decrypt
+		self.hls_fix_init = False
 		self.hls_master_processor = HlsMasterProcessor
 
 	# #################################################################################################
@@ -191,7 +193,9 @@ class HlsHTTPRequestHandler(HTTPRequestHandlerTemplate):
 
 			# init segment is not encrypted, but we need it for decrypting data segments
 			cache_data['init'] = data
-			return data
+
+			# remove info about encryption from init data - needed for gstreamer
+			return mp4remove_cenc(data) if self.hls_fix_init else data
 
 		# collect keys for protected content
 		keys = self.get_drm_keys(cache_data['pssh'], cache_data['drm'], cache_data['drm'].get('privacy_mode', False))
