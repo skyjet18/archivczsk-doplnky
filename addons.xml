@@ -3,7 +3,7 @@
 <addon id="plugin.video.aktualne" name="Aktuálně (DVTV)" version="1.6" hash="f330f7f674be4974ed51ab9ce9052a13" rhash="f330f7f674be4974ed51ab9ce9052a13" />
 <addon id="plugin.video.antiktv" name="Antik TV" version="2.24" hash="8ded0d93349ea98df4396c942f2b3510" rhash="aef35ea027732e32d4da7a22097630f9" />
 <addon id="plugin.video.autosalontv" name="Autosalon" version="1.9" hash="e1836431641d28c728f02e2b0a0037e4" rhash="e1836431641d28c728f02e2b0a0037e4" />
-<addon id="plugin.video.disneyplus" name="Disney+" version="2.1" hash="abe3d7ba5a7d11144113c182c3ca95ee" rhash="924a9c145e69125a2797c2afb72a89aa" />
+<addon id="plugin.video.disneyplus" name="Disney+" version="2.2~1" hash="e83734f4e49aaf95372ade4b9b1465d9" rhash="653348da183049fb708c99da18ba2d1c" />
 <addon id="plugin.video.dokumenty.tv" name="Dokumenty.tv" version="2.3" hash="5acf9bad0ca9e7d4c2f7b5817e7f8a96" rhash="e0f0a2d2bc0fbdac1aa12bc12d03d15c" />
 <addon id="plugin.video.idnestv" name="iDNES.tv" version="1.5" hash="4789639591bf94d6a94744d94bae00c0" rhash="4789639591bf94d6a94744d94bae00c0" />
 <addon id="plugin.video.ivysilani" name="iVysílání - Česká televize" version="3.4" hash="0a53f76853c9fe0fd9581c27222a5732" rhash="f2dd4ff6403e9133e26faffebc136313" />
@@ -36,7 +36,7 @@
 <addon id="plugin.video.voyo" name="VOYO" version="1.6" hash="cb829ab73b5aeb28732a9a54699637a5" rhash="bf10b49920cda42571c8f70547510a67" />
 <addon id="plugin.video.webshare" name="Webshare.cz" version="1.4" hash="12e4641b041e07084163090867b91f69" rhash="1e7e7255383c13e3d892587474b74379" />
 <addon id="plugin.video.yt" name="YouTube" version="2.5" hash="1086ed6ccc8414f8cdc1035955af4cc2" rhash="5d810ffc274aa1150c2a0e52039e1229" />
-<addon id="tools.archivczsk" name="Addons base" version="2.15" hash="ee216c419c2b75e631f5f3497964cec2" rhash="6a9a3cc57fef825eb325f44ad291f4da" />
-<addon id="tools.cenc" name="Content encryption support" version="1.4" hash="0f3e872a0571229285e89bc1d74acc5f" rhash="0f3e872a0571229285e89bc1d74acc5f" />
+<addon id="tools.archivczsk" name="Addons base" version="2.16~2" hash="9256fddf90f623a03e54125f87596f04" rhash="3c74368aa6d5a8eefa41b82fe697f1a3" />
+<addon id="tools.cenc" name="Content encryption support" version="1.5~1" hash="cce1186b2a884032a1a764f2823e3e9b" rhash="cce1186b2a884032a1a764f2823e3e9b" />
 <addon id="tools.xbmc" name="xbmc addons helper" version="1.4" hash="4ec31afb020b221373571c9eb369ddb6" rhash="4ec31afb020b221373571c9eb369ddb6" />
 </addons>
